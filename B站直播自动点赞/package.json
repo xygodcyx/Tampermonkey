@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "proxy-agent": "^6.4.0",
+    "puppeteer": "^22.10.0"
+  }
+}
