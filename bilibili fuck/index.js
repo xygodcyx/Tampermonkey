@@ -15,6 +15,103 @@
 ;(function () {
   'use strict'
 
+  // 因为我们改变了策略,直接重写主内容区,所以不需要禁用广告,但是代码不删
+  // setInterval(() => {
+  //   removeAllAD()
+  // }, 200)
+
+  // 在进入网站时显示净化中的遮挡横幅,免得在净化过程中看到好看的忍不住点进去
+  let panel = null
+  const bodyOverflowStyle = document.body.style.overflow
+  function initLargerPanel() {
+    document.body.style.overflow = 'hidden'
+    createInitLargerPanel()
+    function createInitLargerPanel() {
+      panel = document.createElement('div')
+      function initStyle() {
+        panel.style.width = '100vw'
+        panel.style.height = '100vh'
+        panel.style.zIndex = 2147483647
+        panel.style.position = 'absolute'
+        panel.style.top = 0
+        panel.style.left = 0
+        panel.style.display = 'flex'
+        panel.style.alignItems = 'center'
+        panel.style.justifyContent = 'center'
+        panel.style.backgroundColor = 'rgba(0,0,0,255)'
+        panel.style.fontSize = '100px'
+        panel.textContent = '正在净化bilibili...'
+        panel.style.overflow = 'hidden'
+        panel.style.color = '#ffffff'
+      }
+      initStyle()
+      document.body.appendChild(panel)
+    }
+  }
+  initLargerPanel()
+
+  // 在所有元素加载完毕后干些事情,等待几毫米是因为要确保在下一次事件循环的时候才开始执行,确保元素已经完全加载完毕
+  window.onload = async function () {
+    // await waitMilliSeconds(3)
+    // removeAllAD()
+    await waitMilliSeconds(6)
+    initAllDom()
+
+    await waitMilliSeconds(9)
+    hideShouldKill()
+
+    await waitMilliSeconds(12)
+    initUpdateStyleDom()
+
+    await waitMilliSeconds(15)
+    updateStyle()
+
+    await waitMilliSeconds(20)
+    actualPushCustomChildren()
+  }
+
+  // 初始化dom元素
+
+  function initAllDom() {
+    return new Promise((resolve, reject) => {
+      getDom(allDom, 0)
+      resolve(true)
+    })
+  }
+  const updateStyleDom = {
+    large_header: {
+      select: '.large-header',
+      value: null,
+      status: 'normal',
+      wantAddStyle: {
+        marginBottom: '20px',
+      },
+    },
+    feed_card1: {
+      // 因为去除了轮播图,所以第五个元素的样式会受到影响,所以需要调整
+      select: '.feed-card:nth-child(6)',
+      value: null,
+      status: 'normal',
+      wantAddStyle: {
+        marginTop: '40px',
+      },
+    },
+    feed_card2: {
+      // 因为去除了轮播图,所以第五个元素的样式会受到影响,所以需要调整
+      select: '.feed-card:nth-child(7)',
+      value: null,
+      status: 'normal',
+      wantAddStyle: {
+        marginTop: '40px',
+      },
+    },
+  }
+  function initUpdateStyleDom() {
+    return new Promise((resolve, reject) => {
+      getDom(updateStyleDom, 0)
+      resolve(true)
+    })
+  }
   const shouldKillDom = {
     headerChannel: {
       select: '.header-channel',
@@ -50,35 +147,13 @@
       status: 'normal',
     },
   }
-
-  const updateStyleDom = {
-    large_header: {
-      select: '.large-header',
-      value: null,
-      status: 'normal',
-      wantAddStyle: {
-        marginBottom: '20px',
-      },
-    },
-    feed_card1: {
-      // 因为去除了轮播图,所以第五个元素的样式会受到影响,所以需要调整
-      select: '.feed-card:nth-child(6)',
-      value: null,
-      status: 'normal',
-      wantAddStyle: {
-        marginTop: '40px',
-      },
-    },
-    feed_card2: {
-      // 因为去除了轮播图,所以第五个元素的样式会受到影响,所以需要调整
-      select: '.feed-card:nth-child(7)',
-      value: null,
-      status: 'normal',
-      wantAddStyle: {
-        marginTop: '40px',
-      },
-    },
+  function initShouldKill() {
+    return new Promise((resolve, reject) => {
+      getDom(shouldKillDom, 0)
+      resolve(true)
+    })
   }
+
   const needPushCustomChildrenDom = {
     // 主页面的推荐视频容器
     is_version8: {
@@ -87,80 +162,32 @@
       status: 'normal',
     },
   }
+
+  // 整合一下
   const allDom = {
     ...shouldKillDom,
     ...updateStyleDom,
     ...needPushCustomChildrenDom,
   }
 
-  let panel = null
-  const bodyOverflowStyle = document.body.style.overflow
-  document.body.style.overflow = 'hidden'
-  createInitLargerPanel()
-  window.onload = async function () {
-    // deleteAllChild()
-    setTimeout(removeAllAD, 3)
-    setTimeout(initAllDom, 6)
-    setTimeout(hideShouldKill, 9)
-    setTimeout(initUpdateStyleDom, 12)
-    setTimeout(updateStyle, 15)
-    setTimeout(async () => {
-      const response = await sendRequest()
-      console.log(response.data)
-      const result = response.data.result[11]
-      pushCustomChildren(result)
-      setTimeout(() => {
-        panel.remove()
-        document.body.style.overflow = bodyOverflowStyle
-      }, 10)
-    }, 20)
+  // 主要的净化操作,添加B站的学习视频到主内容区
+
+  async function actualPushCustomChildren() {
+    const response = await sendRequest()
+    console.log(response.data)
+    const result = response.data.result[11]
+    pushCustomChildren(result)
+    await waitMilliSeconds(10)
+    panel.remove()
+    document.body.style.overflow = bodyOverflowStyle
   }
-  setInterval(() => {
-    removeAllAD()
-  }, 200)
-  function createInitLargerPanel() {
-    panel = document.createElement('div')
-    function initStyle() {
-      panel.style.width = '100vw'
-      panel.style.height = '100vh'
-      panel.style.zIndex = 2147483647
-      panel.style.position = 'absolute'
-      panel.style.top = 0
-      panel.style.left = 0
-      panel.style.display = 'flex'
-      panel.style.alignItems = 'center'
-      panel.style.justifyContent = 'center'
-      panel.style.backgroundColor = 'rgba(0,0,0,255)'
-      panel.style.fontSize = '100px'
-      panel.textContent = '正在净化bilibili...'
-      panel.style.overflow = 'hidden'
-      panel.style.color = '#ffffff'
-    }
-    initStyle()
-    document.body.appendChild(panel)
-  }
-
-  let targetNode = document.querySelector('.left-entry') // 假设你要监听的元素的类名是 .left-entry
-
-  let config = { childList: true, subtree: true }
-
-  let callback = function (mutationsList, observer) {
-    for (let mutation of mutationsList) {
-      if (mutation.type === 'childList') {
-      }
-    }
-  }
-
-  let observer = new MutationObserver(callback)
-
-  observer.observe(targetNode, config)
 
   function deleteAllChild() {
     for (let key in needPushCustomChildrenDom) {
       const element = needPushCustomChildrenDom[key]
       element.value.innerHTML = ''
     }
-  }
+  } // 向主内容区添加学习视频前要清除先所有的元素
   function pushCustomChildren(result) {
     deleteAllChild()
     console.log(result)
@@ -192,8 +219,7 @@
     }, 30)
   }
   function createVideoCard(item) {
-    let { arcurl, pic, upic, mid, description, title, duration, play, danmaku, author, pubdate } =
-      item
+    let { arcurl, pic, upic, mid, title, duration, play, danmaku, author, pubdate } = item
     const parser = new DOMParser()
 
     const cardHtml = `
@@ -310,7 +336,7 @@
                 type="image/webp" />
               <img
                 src="${pic}@672w_378h_1c_!web-home-common-cover"
-                alt="${description}"
+                alt="${title}"
                 loading="eager"
                 onload="fsrCb()"
                 onerror="typeof window.imgOnError === 'function' &amp;&amp; window.imgOnError(this)" /><!--]--></picture
@@ -403,14 +429,14 @@
           <!----><!--]-->
           <h3
             class="bili-video-card__info--tit"
-            title="${description || title}">
+            title="${title}">
             <a
               href="${arcurl}"
               target="_blank"
               data-spmid="333.1007"
               data-mod="tianma.2-1-3"
               data-idx="click"
-              >${description || title}
+              >${title}
             </a>
           </h3>
           <div class="bili-video-card__info--bottom">
@@ -436,78 +462,6 @@
     `
     return parser.parseFromString(cardHtml, 'text/html').body.firstChild
   }
-
-  // window.addEventListener('scroll', judgmentScroll)
-  function removeAllAD() {
-    let rcmdCard = document.querySelectorAll('.bili-video-card.is-rcmd')
-    rcmdCard.forEach((item) => {
-      if (
-        item.children.length === 1 &&
-        !item.children[0].classList.contains('bili-video-card__skeleton')
-      ) {
-        if (item.parentNode.classList.contains('feed-card')) {
-          item.parentNode.remove()
-        } else {
-          item.remove()
-        }
-      }
-    })
-  }
-  function getDom(dom, count) {
-    // count 防止死循环 如果获取5次还获取不到说明有问题
-    for (let key in dom) {
-      const element = dom[key]
-      element.value = document.querySelector(element.select)
-    }
-  }
-
-  function initUpdateStyleDom() {
-    return new Promise((resolve, reject) => {
-      getDom(updateStyleDom, 0)
-      resolve(true)
-    })
-  }
-
-  function initShouldKill() {
-    return new Promise((resolve, reject) => {
-      getDom(shouldKillDom, 0)
-      resolve(true)
-    })
-  }
-  function initAllDom() {
-    return new Promise((resolve, reject) => {
-      getDom(allDom, 0)
-      resolve(true)
-    })
-  }
-  function hideShouldKill() {
-    for (let key in shouldKillDom) {
-      let element = shouldKillDom[key]
-      if (!isElementExist(element)) {
-        continue
-      }
-      element.value.style.display = 'none'
-      element.value.style.opacity = 0
-      element.value.style.visiblity = 'hidden'
-      element.value.remove()
-      element.status = 'hidden'
-    }
-  }
-  function updateStyle() {
-    for (let key in updateStyleDom) {
-      let element = updateStyleDom[key]
-      if (!isElementExist(element)) {
-        continue
-      }
-      for (let styleKey in element.wantAddStyle) {
-        element.value.style[styleKey] = element.wantAddStyle[styleKey]
-      }
-    }
-  }
-  function isElementExist(element) {
-    return element.value
-  }
-
   function sendRequest() {
     return new Promise(async (resolve, reject) => {
       const url = `https://api.bilibili.com/x/web-interface/wbi/search/all/v2?__refresh__=true
@@ -533,5 +487,85 @@
       })
       resolve(JSON.parse(response.responseText))
     })
+  }
+
+  // 一些基本的净化操作,删除多余的营销元素
+
+  function hideShouldKill() {
+    for (let key in shouldKillDom) {
+      let element = shouldKillDom[key]
+      if (!isElementExist(element)) {
+        continue
+      }
+      element.value.style.display = 'none'
+      element.value.style.opacity = 0
+      element.value.style.visiblity = 'hidden'
+      element.value.remove()
+      element.status = 'hidden'
+    }
+  }
+  function updateStyle() {
+    for (let key in updateStyleDom) {
+      let element = updateStyleDom[key]
+      if (!isElementExist(element)) {
+        continue
+      }
+      for (let styleKey in element.wantAddStyle) {
+        element.value.style[styleKey] = element.wantAddStyle[styleKey]
+      }
+    }
+  }
+  function removeAllAD() {
+    let rcmdCard = document.querySelectorAll('.bili-video-card.is-rcmd')
+    rcmdCard.forEach((item) => {
+      if (
+        item.children.length === 1 &&
+        !item.children[0].classList.contains('bili-video-card__skeleton')
+      ) {
+        if (item.parentNode.classList.contains('feed-card')) {
+          item.parentNode.remove()
+        } else {
+          item.remove()
+        }
+      }
+    })
+  }
+
+  // tools
+
+  function getDom(dom, count) {
+    // count 防止死循环 如果获取5次还获取不到说明有问题
+    for (let key in dom) {
+      const element = dom[key]
+      element.value = document.querySelector(element.select)
+    }
+  }
+
+  function isElementExist(element) {
+    return element.value
+  }
+
+  function waitMilliSeconds(ms) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms)
+    })
+  }
+
+  // 观察者测试,但是貌似用不到
+  function moTest() {
+    let targetNode = document.querySelector('.left-entry') // 假设你要监听的元素的类名是 .left-entry
+
+    let config = { childList: true, subtree: true }
+
+    let callback = function (mutationsList, observer) {
+      for (let mutation of mutationsList) {
+        if (mutation.type === 'childList') {
+        }
+      }
+    }
+
+    let observer = new MutationObserver(callback)
+
+    observer.observe(targetNode, config)
   }
 })()
