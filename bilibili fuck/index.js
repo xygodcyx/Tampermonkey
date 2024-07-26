@@ -1,18 +1,20 @@
 // ==UserScript==
 // @name         bilibili-fuck
 // @namespace    http://tampermonkey.net/
-// @version      2024-07-24
-// @description  去你妈的bilibili推荐!,我要学习!!!
+// @version      1.0.0
+// @description  去你的bilibili推荐!,我要学习!!!
 // @match        https://www.bilibili.com/
 // @match        https://search.bilibili.com/*
 // @match        https://www.bilibili.com/video/*
 // @match        https://message.bilibili.com/*
 // @author       XyGodCyx
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=bilibili.com
-// @grant       GM_xmlhttpRequest
-// @grant       GM.xmlhttpRequest
-// @connect     api.bilibili.com
+// @grant        GM_xmlhttpRequest
+// @grant        GM.xmlhttpRequest
+// @connect      api.bilibili.com
 // @require      https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.18.0/js/md5.min.js
+// @run-at       document-end
+// @license       MIT
 // ==/UserScript==
 
 // @match        *://*.bilibili.com/*
@@ -67,12 +69,15 @@
   const customCssStyle = {
     nav_search_input: `
     
-      #i_cecream > div.bili-feed4 > div.bili-header.large-header > div.bili-header__bar > .center-search-container{
+      #i_cecream > div.bili-feed4  .center-search-container{
         margin-left:100px !important;
       }
       .bili-header .center-search-container .center-search__bar .nav-search-content .nav-search-input::placeholder {
         color:transparent;
       }
+     #i_cecream div.trending{
+       display:none !important;
+     }
     `,
     // 原版b站为了做方便加载,直接把多余的隐藏了
     card: `
@@ -112,6 +117,9 @@
     // header左边上下切换的小广告
     loc_moveclip: `
       .loc-entry.loc-moveclip{
+        display:none !important;
+      }
+      .left-loc-entry{
         display:none !important;
       }
     `,
@@ -227,6 +235,9 @@
     'parody',
     '恶搞',
     '测评',
+    '小说',
+    '网络小说',
+    '娱乐',
   ]
   let classifies = [
     {
@@ -256,6 +267,12 @@
       text: 'node.js',
       value: ['node', 'node.js', 'Nodejs', 'Node.js'],
     },
+
+    {
+      text: '网络',
+      value: ['计算机网络', '网络'],
+    },
+
     {
       text: '编译器',
       value: '编译器',
@@ -313,6 +330,7 @@
     await WantIWhatCreateCard(1, 'vue进阶')
     await WantIWhatCreateCard(1, 'vue源码')
     await WantIWhatCreateCard(1, 'vue入门')
+    await WantIWhatCreateCard(1, 'JavaScript游戏')
     await WantIWhatCreateCard(1, 'javascript进阶')
     await WantIWhatCreateCard(1, 'javascript源码')
     await WantIWhatCreateCard(1, 'nodejs')
@@ -320,8 +338,9 @@
     await WantIWhatCreateCard(1, 'css设计')
     await WantIWhatCreateCard(1, 'css灵感')
     await WantIWhatCreateCard(1, 'css创意')
+    await WantIWhatCreateCard(1, '计算机网络')
+    await WantIWhatCreateCard(2, '计算机网络')
     await WantIWhatCreateCard(1, '编译器入门')
-    await WantIWhatCreateCard(1, 'JavaScript游戏教程')
     await WantIWhatCreateCard(1, '算法入门')
     await WantIWhatCreateCard(1, '数据结构入门')
     await WantIWhatCreateCard(1, '专升本')
@@ -347,6 +366,7 @@
     await waitMilliSeconds(1)
     removeLargerPanel()
   }
+  // 数据结构为引用类型的去重和排除excludeTag包含的内容
   function uniqueArrayByProperty(arr, prop) {
     const seen = new Set()
     return arr.filter((item) => {
@@ -368,19 +388,17 @@
 
   // 初始化dom元素
   const needAddEventDom = {
-    // 搜索的热搜,最坏的一个营销手段,呸!
+    // 搜索的热搜,最坏的一个营销手段!
     nav_search_input: {
       select: '.nav-search-input',
       value: null,
       status: 'normal',
       events: {
         click: async function () {
-          setTimeout(() => {
-            const trending = document.querySelector('.trending')
-            if (trending) {
-              trending.remove()
-            }
-          }, 100)
+          await waitMilliSeconds(10)
+          const history_fold_wrap = document.querySelector('.history-fold-wrap')
+          const clickEvent = new MouseEvent('click')
+          history_fold_wrap.dispatchEvent(clickEvent)
         },
       },
     },
@@ -619,6 +637,7 @@
   async function createCardDomForAllCardDom(doms = allCardData, needCreateCount = -1) {
     clearTasks()
     needCreateCount = needCreateCount === -1 ? doms.length : needCreateCount
+    doms.sort((a, b) => b.play - a.play)
     deleteAllChild()
     removeLargerPanel()
     await waitMilliSeconds(1)
