@@ -3,3 +3,5 @@ node_modules/
 1.html
 1.js
 a.py
+package.json
+pnpm-lock.yaml

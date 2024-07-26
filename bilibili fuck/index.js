@@ -4,11 +4,15 @@
 // @version      2024-07-24
 // @description  去你妈的bilibili推荐!,我要学习!!!
 // @match        https://www.bilibili.com/
+// @match        https://search.bilibili.com/*
+// @match        https://www.bilibili.com/video/*
+// @match        https://message.bilibili.com/*
 // @author       XyGodCyx
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=bilibili.com
 // @grant       GM_xmlhttpRequest
 // @grant       GM.xmlhttpRequest
 // @connect     api.bilibili.com
+// @require      https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.18.0/js/md5.min.js
 // ==/UserScript==
 
 // @match        *://*.bilibili.com/*
@@ -19,7 +23,8 @@
   // setInterval(() => {
   //   removeAllAD()
   // }, 200)
-
+  // 因为b站的接口需要鉴权,需要每隔一段时间就要重新获取接口
+  const needReGetDataDiffTime = 1000 * 60 * 60 * 8
   // 在进入网站时显示净化中的遮挡横幅,免得在净化过程中看到好看的忍不住点进去
   let panel = null
   const bodyOverflowStyle = document.body.style.overflow
@@ -38,7 +43,7 @@
         panel.style.display = 'flex'
         panel.style.alignItems = 'center'
         panel.style.justifyContent = 'center'
-        panel.style.backgroundColor = 'rgba(0,0,0,255)'
+        panel.style.backgroundColor = '#00AEEC'
         panel.style.fontSize = '100px'
         panel.textContent = '正在净化bilibili...'
         panel.style.overflow = 'hidden'
@@ -48,43 +53,145 @@
       document.body.appendChild(panel)
     }
   }
-  initLargerPanel()
+  function removeLargerPanel() {
+    if (!panel) {
+      return
+    }
+    panel.remove()
+    document.body.style.overflow = bodyOverflowStyle
+    panel = null
+  }
 
+  let offset = 1
+  if (window.location.href.includes('www.bilibili.com/video')) {
+    // 视频播放页和消息页
+    hideVideoPageHeader()
+  } else if (window.location.href.includes('message.bilibili.com')) {
+    hideMessagePageHeader()
+  } else if (
+    window.location.href === 'https://www.bilibili.com/' ||
+    window.location.href === 'https://www.bilibili.com/index.html'
+  ) {
+    // bilibili的主页
+    // 最好还是一开始就显示遮挡层
+    offset = 1
+    initLargerPanel()
+  }
   // 在所有元素加载完毕后干些事情,等待几毫米是因为要确保在下一次事件循环的时候才开始执行,确保元素已经完全加载完毕
   window.onload = async function () {
-    // await waitMilliSeconds(3)
     // removeAllAD()
-    await waitMilliSeconds(6)
+    // 暂时就净化这三个页面
+    if (window.location.href.includes('search.bilibili.com')) {
+      // 搜索页
+      await waitMilliSeconds(10)
+      await initNeedReplaceEntryDom()
+      replaceNavDom()
+    } else if (
+      window.location.href === 'https://www.bilibili.com/' ||
+      window.location.href === 'https://www.bilibili.com/index.html'
+    ) {
+      // bilibili的主页
+      offset = 1
+      init()
+    }
+  }
+  function hideVideoPageHeader() {
+    const nav = document.querySelector('#biliMainHeader')
+    nav.style.opacity = 0
+    nav.style.position = 'absolute'
+    nav.style.top = '-10000px'
+    nav.style.left = '-10000px'
+  }
+  function hideMessagePageHeader() {
+    const nav = document.querySelector('#home_nav')
+    const message_navbar = document.querySelector('#message-navbar')
+    const container = document.querySelector('.container')
+    if (!nav || !message_navbar || container) {
+      return
+    }
+    nav.remove()
+    message_navbar.remove()
+    container.style.marginTop = '10px'
+  }
+  async function init() {
+    await waitMilliSeconds(1)
     initAllDom()
 
-    await waitMilliSeconds(9)
+    await waitMilliSeconds(2)
+    addEventFromMaineedAddEventDom()
+
+    await waitMilliSeconds(4)
     hideShouldKill()
 
-    await waitMilliSeconds(12)
+    await waitMilliSeconds(6)
     initUpdateStyleDom()
 
-    await waitMilliSeconds(15)
+    await waitMilliSeconds(10)
     updateStyle()
 
-    await waitMilliSeconds(20)
-    actualPushCustomChildren()
+    // 填充数据的过程
+    await waitMilliSeconds(2)
+    await WantIWhatCreateCard(1, 'vue入门')
+    await WantIWhatCreateCard(1, 'vue源码')
+    await WantIWhatCreateCard(1, 'javascript')
+    await WantIWhatCreateCard(2, 'css高级')
+    await WantIWhatCreateCard(2, 'css创意')
+    await WantIWhatCreateCard(1, '编译器入门')
+    await WantIWhatCreateCard(1, 'JavaScript游戏教程')
+    await WantIWhatCreateCard(1, '算法入门')
+    await WantIWhatCreateCard(1, '数据结构入门')
+    localStorage.setItem('allCardDom', allCardDom)
+
+    // 根据数据创建dom
+    createCardDomForAllCardDom()
+
+    setTimeout(async () => {
+      await initUpdateStyleDom()
+      updateStyle()
+    }, 3)
+
+    await waitMilliSeconds(2)
+    replaceNavDom()
+
+    await waitMilliSeconds(1)
+    removeLargerPanel()
+
+    initCustomCssStyle()
   }
 
   // 初始化dom元素
-
-  function initAllDom() {
+  const needAddEventDom = {
+    // 搜索的热搜,最坏的一个营销手段,呸!
+    nav_search_input: {
+      select: '.nav-search-input',
+      value: null,
+      status: 'normal',
+      events: {
+        click: async function () {
+          setTimeout(() => {
+            const trending = document.querySelector('.trending')
+            if (trending) {
+              trending.remove()
+            }
+          }, 100)
+        },
+      },
+    },
+  }
+  function initNeedAddEventDom() {
     return new Promise((resolve, reject) => {
-      getDom(allDom, 0)
+      getDom(needAddEventDom)
       resolve(true)
     })
   }
+
   const updateStyleDom = {
     large_header: {
       select: '.large-header',
       value: null,
       status: 'normal',
       wantAddStyle: {
-        marginBottom: '20px',
+        marginBottom: '60px',
       },
     },
     feed_card1: {
@@ -106,9 +213,49 @@
       },
     },
   }
+  const customCssStyle = {
+    nav_search_input: `
+      .bili-header .center-search-container .center-search__bar .nav-search-content .nav-search-input::placeholder {
+      color:transparent;
+      }
+    `,
+    // 原版b站为了做方便加载,直接把多余的隐藏了,也是牛逼
+    card: `
+    @media screen and (min-width: 1px) {
+      .recommended-container_floor-aside .container .feed-card:nth-of-type(n + 12) {
+        display: block !important;
+      }
+    }
+    `,
+    // header的logo
+    bili_header__logo: `
+    .bili-header .left-entry__title{
+      display:none;
+    }
+    .bili-header .left-entry .entry-title{
+      display:none;
+    }
+    `,
+  }
+  function initCustomCssStyle() {
+    const styleDom = document.createElement('style')
+    document.head.appendChild(styleDom)
+    for (let key in customCssStyle) {
+      const style = customCssStyle[key]
+      styleDom.innerHTML += style
+      // addStyleSheet(style)
+    }
+    function addStyleSheet(rules) {
+      const regex = /([^{}]+\{[^{}]*\})|(@[^\s{][^{]*\{([^{}]*\{[^{}]*\})+[^{}]*\})/g
+      const _rules = rules.match(regex)
+      _rules?.forEach((rule) => {
+        styleDom.sheet?.insertRule(rule, styleDom.sheet.cssRules.length)
+      })
+    }
+  }
   function initUpdateStyleDom() {
     return new Promise((resolve, reject) => {
-      getDom(updateStyleDom, 0)
+      getDom(updateStyleDom)
       resolve(true)
     })
   }
@@ -140,16 +287,34 @@
       value: null,
       status: 'normal',
     },
-    // 右下角的反馈按钮组
-    palette_button_outer: {
-      select: '.palette-button-outer.palette-feed4',
+    // 右下角的反馈按钮组,返回顶部不删
+    palette_button_wrap: {
+      select: '.palette-button-wrap > *:not(:last-child)',
+      value: null,
+      status: 'normal',
+    },
+    // 下载客户端按钮,免得受不了去用客户端了
+    download_entry: {
+      select: '.download-entry.download-client-trigger',
+      value: null,
+      status: 'normal',
+    },
+    // 上方的banner跳转链接
+    head_title: {
+      select: '.head-title',
+      value: null,
+      status: 'normal',
+    },
+    // 也是banner跳转链接
+    banner_link: {
+      select: '.banner-link',
       value: null,
       status: 'normal',
     },
   }
   function initShouldKill() {
     return new Promise((resolve, reject) => {
-      getDom(shouldKillDom, 0)
+      getDom(shouldKillDom)
       resolve(true)
     })
   }
@@ -163,64 +328,169 @@
     },
   }
 
+  const leftReplaceBaseInfo = {
+    status: 'normal',
+    replace: `
+    <li class="v-popover-wrap">
+      <a
+        href="#"
+        class="default-entry"
+        ><span>学习</span></a>
+    </li>
+   `,
+  }
+  const rightReplaceBaseInfo = {
+    status: 'normal',
+    replace: `
+    <li class="v-popover-wrap">
+      <a
+        href="#"
+        class="right-entry__outside"
+        ><span class="right-entry-text">学习</span></a>
+    </li>
+    `,
+  }
+  const needReplaceEntryDom = {
+    // left
+    shouye: {
+      select: '.left-entry > :first-child',
+      value: null,
+      ...leftReplaceBaseInfo,
+    },
+    fanju: {
+      select: '.left-entry .v-popover-wrap:nth-child(2)',
+      value: null,
+      ...leftReplaceBaseInfo,
+    },
+    zhibo: {
+      select: '.left-entry .v-popover-wrap:nth-child(3)',
+      value: null,
+      ...leftReplaceBaseInfo,
+    },
+    game_center: {
+      select: '.left-entry .v-popover-wrap:nth-child(4)',
+      value: null,
+      ...leftReplaceBaseInfo,
+    },
+    vip_shop: {
+      select: '.left-entry .v-popover-wrap:nth-child(5)',
+      value: null,
+      ...leftReplaceBaseInfo,
+    },
+    manhua: {
+      select: '.left-entry .v-popover-wrap:nth-child(6)',
+      value: null,
+      ...leftReplaceBaseInfo,
+    },
+    saishi: {
+      select: '.left-entry .v-popover-wrap:nth-child(7)',
+      value: null,
+      ...leftReplaceBaseInfo,
+    },
+    // right
+    // 不愧是大会员,还要一个专门的div包着
+    dahuiyuan: {
+      select: '.vip-wrap',
+      value: null,
+      ...rightReplaceBaseInfo,
+    },
+    // 相比直接学习,从动态获取的碎片知识远小于浪费的时间
+    dongtai: {
+      select: '.right-entry .v-popover-wrap:nth-child(4)',
+      value: null,
+      ...rightReplaceBaseInfo,
+    },
+    // banner图
+    bili_header__banner: {
+      select: '.bili-header__banner',
+      value: null,
+      status: 'normal',
+      replace: `<div style="
+      width:100%;
+      height:100%;
+      background:#00AEEC;
+      color:#ffffff;
+      font-size:40px;
+      display:flex;
+      justify-content:center;
+      align-items:end;
+      padding:10px;
+      ">革命尚未成功,同志仍需努力</div>`,
+    },
+  }
+  function initNeedReplaceEntryDom() {
+    return new Promise((resolve, reject) => {
+      getDom(needReplaceEntryDom)
+      resolve(true)
+    })
+  }
+
   // 整合一下
   const allDom = {
     ...shouldKillDom,
     ...updateStyleDom,
     ...needPushCustomChildrenDom,
+    ...needReplaceEntryDom,
+    ...needAddEventDom,
+  }
+
+  function initAllDom() {
+    return new Promise((resolve, reject) => {
+      getDom(allDom)
+      resolve(true)
+    })
   }
 
   // 主要的净化操作,添加B站的学习视频到主内容区
+  let allCardDom = []
+  // page和keyword数据会在sendRequest函数里用到,请求搜索内容
+  let page = 1
+  let keyword = 'vue'
 
-  async function actualPushCustomChildren() {
-    const response = await sendRequest()
-    console.log(response.data)
-    const result = response.data.result[11]
-    pushCustomChildren(result)
-    await waitMilliSeconds(10)
-    panel.remove()
-    document.body.style.overflow = bodyOverflowStyle
-  }
-
-  function deleteAllChild() {
-    for (let key in needPushCustomChildrenDom) {
-      const element = needPushCustomChildrenDom[key]
-      element.value.innerHTML = ''
-    }
-  } // 向主内容区添加学习视频前要清除先所有的元素
-  function pushCustomChildren(result) {
+  function createCardDomForAllCardDom() {
     deleteAllChild()
-    console.log(result)
-    console.log(needPushCustomChildrenDom.is_version8)
-    setTimeout(() => {
-      const data = result.data
-      for (let i = 0; i < data.length; i++) {
-        const item = data[i]
-        if (item.release_status !== 0) {
+    allCardDom = uniqueArrayByProperty(allCardDom, 'id')
+    createAllCard()
+    function deleteAllChild() {
+      for (let key in needPushCustomChildrenDom) {
+        const element = needPushCustomChildrenDom[key]
+        if (!element.value) {
           continue
         }
-        const card = createVideoCard(item)
-        if (needPushCustomChildrenDom.is_version8.value.firstChild) {
-          // 如果有子节点，将新元素插入到第一个子节点之前
-          needPushCustomChildrenDom.is_version8.value.insertBefore(
-            card,
-            needPushCustomChildrenDom.is_version8.value.firstChild
-          )
+        element.value.innerHTML = ''
+      }
+    } // 向主内容区添加学习视频前要清除先所有的元素
+
+    function uniqueArrayByProperty(arr, prop) {
+      const seen = new Set()
+      return arr.filter((item) => {
+        const key = item[prop]
+        if (seen.has(key)) {
+          return false
         } else {
-          // 如果没有子节点，直接将新元素添加到父元素中
-          needPushCustomChildrenDom.is_version8.value.appendChild(card)
+          seen.add(key)
+          return true
+        }
+      })
+    } // 可能是接口的问题,返回的多页数据有重复,需要去重
+    function createAllCard() {
+      for (let i = 0; i < allCardDom.length; i++) {
+        // 加载50个以后就可以移除遮挡层了
+        const item = allCardDom[i]
+        const card = createVideoCard(item)
+        needPushCustomChildrenDom.is_version8.value.appendChild(card)
+        if (i > 50) {
+          removeLargerPanel()
+          document.body.scrollTop
         }
       }
+    }
+  } //根据数据创建真实dom
 
-      setTimeout(async () => {
-        await initUpdateStyleDom()
-        updateStyle()
-      }, 30)
-    }, 30)
-  }
   function createVideoCard(item) {
     let { arcurl, pic, upic, mid, title, duration, play, danmaku, author, pubdate } = item
     const parser = new DOMParser()
+    title = title.replace(/<[^>]+>/, '') // 去除html标签
 
     const cardHtml = `
      <div
@@ -429,15 +699,13 @@
           <!----><!--]-->
           <h3
             class="bili-video-card__info--tit"
-            title="${title}">
+            title="${'学习、学习、还是学习！'}">
             <a
               href="${arcurl}"
               target="_blank"
               data-spmid="333.1007"
               data-mod="tianma.2-1-3"
-              data-idx="click"
-              >${title}
-            </a>
+              data-idx="click">${title}</a>
           </h3>
           <div class="bili-video-card__info--bottom">
             <!--[--><a
@@ -451,7 +719,9 @@
                 class="bili-video-card__info--author"
                 title="${author}"
                 >${author}</span
-              ><span class="bili-video-card__info--date">· ${pubdate}</span></a
+              ><span class="bili-video-card__info--date">· ${
+                new Date(pubdate * 1000).getMonth() + 1 + '.' + new Date(pubdate * 1000).getDay()
+              }</span></a
             ><!--]-->
           </div>
         </div>
@@ -460,15 +730,84 @@
       </div>
     </div>
     `
-    return parser.parseFromString(cardHtml, 'text/html').body.firstChild
+    const node = parser.parseFromString(cardHtml, 'text/html').body.firstChild
+    // node.querySelector('.bili-video-card__info--tit a').innerHTML = title
+    return node
+  } // 返回一个填充好数据的视频卡片
+
+  async function WantIWhatCreateCard(_page = 1, _keyword = 'vue') {
+    return new Promise(async (resolve) => {
+      page = _page
+      keyword = _keyword
+      await actualPushCustomChildren()
+      resolve(true)
+    })
+  } //生成数据
+
+  async function actualPushCustomChildren() {
+    const response = await sendRequest()
+    if (!response.data.result) {
+      return
+    }
+    const result = response.data.result[11]
+    pushCustomChildren(result)
   }
+
+  function pushCustomChildren(result) {
+    addCardinAllCardDom()
+
+    // 这里面用到了result
+    function addCardinAllCardDom() {
+      const data = result.data
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i]
+        if (item.release_status !== 0) {
+          continue
+        }
+
+        allCardDom.push(item)
+      }
+    }
+  }
+
   function sendRequest() {
+    // 一个耗时操作，需要设置缓存
     return new Promise(async (resolve, reject) => {
-      const url = `https://api.bilibili.com/x/web-interface/wbi/search/all/v2?__refresh__=true
-    &_extra=&context=&
-    page=1&
-    page_size=42&
-    order=&duration=&from_source=&from_spmid=333.337&platform=pc&highlight=1&single_column=0&keyword=${'vue'}&qv_id=Q19CuQMsYh7C4N31px8aVfO7xtSBWEGS&ad_resource=5646&source_tag=3&web_location=1430654&w_rid=52c5174af1034c1f5f6da1af639e4024&wts=1721877692`
+      const params = {}
+      const originQuery = {
+        __refresh__: true,
+        _extra: '',
+        context: '',
+        // 全局变量
+        page,
+        page_size: 42,
+        order: '',
+        duration: '',
+        from_source: '',
+        from_spmid: 333.337,
+        platform: 'pc',
+        highlight: 1,
+        single_column: 0,
+        keyword,
+        qu_id: 'Q19CuQMsYh7C4N31px8aVfO7xtSBWEGS',
+        ad_resource: '5646',
+        source_tag: 3,
+        web_location: 1430654,
+      }
+      // w_rid是根据传入的参数和时间戳动态生成的
+      // w_rid=52c5174af1034c1f5f6da1af639e4024&wts=${new Date().getTime()}
+      let data = localStorage.getItem(`bilifuck_${keyword}`, null)
+      // let needGetNewCardData = isNeedReGetData()
+
+      if (data) {
+        resolve(JSON.parse(data))
+        return
+      }
+      // finalQuery里面的w_rid会过期,但是已经获取到的缓存数据不会过期,所以这里不需要判断是否需要重新获取数据
+      // 因为如果有新的关键词(keyword),会继续获取query,然后如果发现过期了,会再次获取一遍w_rid,然后缓存到本地
+      const final_query = await getFinalQuery(originQuery)
+      const url = `https://api.bilibili.com/x/web-interface/wbi/search/all/v2?${final_query}`
+      console.log('获取card数据')
       const response = await GM.xmlHttpRequest({
         method: 'GET',
         url,
@@ -483,10 +822,26 @@
           'Sec-Fetch-Mode': 'cors',
           'Sec-Fetch-Site': 'same-site',
         },
-        // responseType: 'json',
+        responseType: 'json',
       })
-      resolve(JSON.parse(response.responseText))
+      data = JSON.parse(response.responseText)
+      localStorage.setItem(`bilifuck_${keyword}`, response.responseText)
+      resolve(data)
     })
+  }
+  function isNeedReGetData() {
+    let result = true
+    const now = new Date().getTime()
+    // -1表示首次使用
+    const last_time = localStorage.getItem('bili_fuck_wbi_keys_time', -1)
+    if (last_time) {
+      const diff = now - last_time
+      // 如果距离上次获取的间隔小于8小时,则不需要重新获取
+      if (diff < needReGetDataDiffTime) {
+        result = false
+      }
+    }
+    return result
   }
 
   // 一些基本的净化操作,删除多余的营销元素
@@ -497,11 +852,17 @@
       if (!isElementExist(element)) {
         continue
       }
-      element.value.style.display = 'none'
-      element.value.style.opacity = 0
-      element.value.style.visiblity = 'hidden'
-      element.value.remove()
-      element.status = 'hidden'
+      if (!element.value) {
+        continue
+      }
+      if (Array.isArray(element.value)) {
+        for (let i = 0; i < element.value.length; i++) {
+          const item = element.value[i]
+          item.remove()
+        }
+      } else {
+        element.value.remove()
+      }
     }
   }
   function updateStyle() {
@@ -511,6 +872,9 @@
         continue
       }
       for (let styleKey in element.wantAddStyle) {
+        if (!element.value) {
+          return
+        }
         element.value.style[styleKey] = element.wantAddStyle[styleKey]
       }
     }
@@ -531,13 +895,46 @@
     })
   }
 
+  async function replaceNavDom() {
+    for (let key in needReplaceEntryDom) {
+      const element = needReplaceEntryDom[key]
+      if (!element.value) {
+        continue
+      }
+      // element.value.removeEventListener('mouseenter')
+      element.value.innerHTML = element.replace
+      element.value.addEventListener('mouseenter', function () {
+        element.value.innerHTML = element.replace
+      })
+    }
+  } // 替换顶部导航栏多余的营销元素为学习、学习、学习！
+
+  function addEventFromMaineedAddEventDom() {
+    for (let key in needAddEventDom) {
+      const element = needAddEventDom[key]
+      if (!element.value) {
+        continue
+      }
+      for (let event in element.events) {
+        let fun = element.events[event]
+        element.value.addEventListener(event, fun)
+      }
+    }
+  }
+
   // tools
 
-  function getDom(dom, count) {
+  function getDom(dom, count = 0) {
     // count 防止死循环 如果获取5次还获取不到说明有问题
     for (let key in dom) {
       const element = dom[key]
-      element.value = document.querySelector(element.select)
+      const res = Array.from(document.querySelectorAll(element.select))
+      if (res.length > 1) {
+        // 如果获取了多个,说明想进行多选,把element.value设置为一个数组,在hideShouldKill的时候方便处理
+        element.value = res
+      } else {
+        element.value = res[0]
+      }
     }
   }
 
@@ -547,8 +944,111 @@
 
   function waitMilliSeconds(ms) {
     return new Promise((resolve) => {
-      setTimeout(resolve, ms)
+      setTimeout(resolve, ms * offset)
     })
+  }
+
+  // 得到编码后的请求参数
+  // 传入的参数格式是这样的
+  // const params = { foo: '114', bar: '514', baz: 1919810 },
+  async function getFinalQuery(originParams) {
+    let final_query = ''
+    const mixinKeyEncTab = [
+      46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49, 33, 9, 42, 19, 29,
+      28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4, 22,
+      25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52,
+    ]
+
+    // 对 imgKey 和 subKey 进行字符顺序打乱编码
+    const getMixinKey = (orig) =>
+      mixinKeyEncTab
+        .map((n) => orig[n])
+        .join('')
+        .slice(0, 32)
+
+    // 为请求参数进行 wbi 签名
+    function encWbi(params, img_key, sub_key) {
+      const mixin_key = getMixinKey(img_key + sub_key),
+        curr_time = Math.round(Date.now() / 1000),
+        chr_filter = /[!'()*]/g
+
+      Object.assign(params, { wts: curr_time }) // 添加 wts 字段
+      // 按照 key 重排参数
+      const query = Object.keys(params)
+        .sort()
+        .map((key) => {
+          // 过滤 value 中的 "!'()*" 字符
+          const value = params[key].toString().replace(chr_filter, '')
+          return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+        })
+        .join('&')
+
+      const wbi_sign = md5(query + mixin_key) // 计算 w_rid
+
+      return query + '&w_rid=' + wbi_sign
+    }
+    // 获取最新的 img_key 和 sub_key
+    // 一个耗时操作
+    async function getWbiKeys(SESSDATA) {
+      return new Promise(async (resolve, reject) => {
+        let needGetNewKeys = isNeedReGetData()
+        const res = localStorage.getItem('bili_fuck_wbi_keys', null)
+        if (res && !needGetNewKeys) {
+          // 能获取到res的缓存并且没有过期,则直接返回缓存的res
+          resolve(JSON.parse(res))
+        } else {
+          // 如果res获取不到或者超出了有效期,则重新获取
+          console.log('获取wbi_keys')
+          GM.xmlHttpRequest({
+            method: 'GET',
+            url: 'https://api.bilibili.com/x/web-interface/nav',
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+              'Referer': 'https://www.bilibili.com/',
+              // 'Cookie': `SESSDATA=${SESSDATA}`,
+            },
+            onload: function (response) {
+              if (response.status === 200) {
+                const data = JSON.parse(response.responseText)
+
+                const {
+                  data: {
+                    wbi_img: { img_url, sub_url },
+                  },
+                } = data
+                const img_sub_obj = {
+                  img_key: img_url.slice(img_url.lastIndexOf('/') + 1, img_url.lastIndexOf('.')),
+                  sub_key: sub_url.slice(sub_url.lastIndexOf('/') + 1, sub_url.lastIndexOf('.')),
+                }
+                localStorage.setItem('bili_fuck_wbi_keys', JSON.stringify(img_sub_obj))
+                localStorage.setItem('bili_fuck_wbi_keys_time', new Date().getTime())
+                resolve(img_sub_obj)
+              } else {
+                reject(new Error('Network response was not ok ' + response.statusText))
+              }
+            },
+            onerror: function (error) {
+              reject(error)
+            },
+          })
+        }
+      })
+    }
+
+    async function main() {
+      try {
+        const web_keys = await getWbiKeys('SESSDATA的值')
+        const img_key = web_keys.img_key,
+          sub_key = web_keys.sub_key
+        const final_query = encWbi(originParams, img_key, sub_key)
+        return final_query
+      } catch (error) {
+        console.error('Main error: ', error)
+      }
+    }
+    final_query = await main()
+    return final_query
   }
 
   // 观察者测试,但是貌似用不到
