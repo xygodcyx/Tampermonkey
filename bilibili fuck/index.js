@@ -66,11 +66,15 @@
   // 一开始就初始化自定义的css样式
   const customCssStyle = {
     nav_search_input: `
+    
+      #i_cecream > div.bili-feed4 > div.bili-header.large-header > div.bili-header__bar > .center-search-container{
+        margin-left:100px !important;
+      }
       .bili-header .center-search-container .center-search__bar .nav-search-content .nav-search-input::placeholder {
-      color:transparent;
+        color:transparent;
       }
     `,
-    // 原版b站为了做方便加载,直接把多余的隐藏了,也是牛逼
+    // 原版b站为了做方便加载,直接把多余的隐藏了
     card: `
     @media screen and (min-width: 1px) {
       .recommended-container_floor-aside .container .feed-card:nth-of-type(n + 12) {
@@ -120,6 +124,7 @@
       justify-content: start;
       align-items: center;
       gap: 10px;
+      margin: 10px 0;
     }
     .bili_fuck_classify_btn{
       background: #00AEEC;
@@ -128,6 +133,11 @@
       line-height: 30px;
       padding: 0 10px;
       border-radius: 3px;
+    }
+    .bili_fuck_classify_btn.active{
+      background: #0088cc;
+      border: 2px solid #0088aa;
+      scale: 1.1;
     }
     .bili_fuck_classify_btn:hover{
       cursor:pointer;
@@ -202,29 +212,49 @@
     message_navbar.remove()
     container.style.marginTop = '10px'
   }
+  let excludeTag = [
+    '鬼畜',
+    '素材',
+    '比利',
+    '沙雕',
+    '马凯',
+    '美食',
+    '同性恋',
+    '大战',
+    'VAN',
+    '更衣室',
+    '本篇',
+    'parody',
+    '恶搞',
+    '测评',
+  ]
   let classifies = [
     {
       text: '全部',
       value: 'all',
     },
+
+    {
+      text: 'js',
+      value: ['javascript', 'JavaScript'],
+      exclude: ['vue', 'Vue', 'Vue2.0', 'Vue3.0'],
+    },
+
+    {
+      text: 'css',
+      value: ['CSS', 'CSS3'],
+      // 因为有的教程会把跟前端相关的所有tag都加上,所以需要排除掉当前分类不需要的
+      exclude: ['vue', 'Vue', 'Vue2.0', 'Vue3.0', 'javascript', 'JavaScript'],
+    },
+
     {
       text: 'vue',
       value: ['vue', 'Vue', 'Vue2.0', 'Vue3.0'],
     },
 
     {
-      text: 'js',
-      value: ['js', 'JavaScript'],
-    },
-
-    {
       text: 'node.js',
       value: ['node', 'node.js', 'Nodejs', 'Node.js'],
-    },
-
-    {
-      text: 'css',
-      value: ['CSS', 'CSS3'],
     },
     {
       text: '编译器',
@@ -238,7 +268,28 @@
       text: '数据结构',
       value: '数据结构',
     },
+    {
+      text: '专升本',
+      value: [
+        '专升本英语',
+        '江西专升本',
+        '专升本计算机',
+        '专升本政治',
+        '专升本数学',
+        '专升本数学',
+        '专升本',
+      ],
+    },
+    {
+      text: '考研',
+      value: ['考研', '考研英语', '考研数学'],
+    },
+    {
+      text: '哲学•道家•修仙',
+      value: ['哲学', '人生意义', '道家', '修仙'],
+    },
   ]
+  let allCardData = []
 
   async function init() {
     createClassify()
@@ -259,19 +310,29 @@
 
     // 填充数据的过程
     await waitMilliSeconds(2)
+    await WantIWhatCreateCard(1, 'vue进阶')
+    await WantIWhatCreateCard(1, 'vue源码')
     await WantIWhatCreateCard(1, 'vue入门')
     await WantIWhatCreateCard(1, 'javascript进阶')
     await WantIWhatCreateCard(1, 'javascript源码')
     await WantIWhatCreateCard(1, 'nodejs')
-    await WantIWhatCreateCard(1, 'vue源码')
-    await WantIWhatCreateCard(1, 'css高级')
+    await WantIWhatCreateCard(1, 'css')
+    await WantIWhatCreateCard(1, 'css设计')
+    await WantIWhatCreateCard(1, 'css灵感')
     await WantIWhatCreateCard(1, 'css创意')
     await WantIWhatCreateCard(1, '编译器入门')
     await WantIWhatCreateCard(1, 'JavaScript游戏教程')
     await WantIWhatCreateCard(1, '算法入门')
     await WantIWhatCreateCard(1, '数据结构入门')
-    localStorage.setItem('allCardDom', allCardDom)
-    console.log(allCardDom)
+    await WantIWhatCreateCard(1, '专升本')
+    await WantIWhatCreateCard(1, '江西专升本')
+    await WantIWhatCreateCard(1, '考研')
+    await WantIWhatCreateCard(1, '哲学')
+    await WantIWhatCreateCard(1, '道家')
+    await WantIWhatCreateCard(1, '修仙')
+    allCardData = uniqueArrayByProperty(allCardData, 'id')
+    localStorage.setItem('allCardDom', allCardData)
+    console.log(allCardData)
     // 根据数据创建dom
     createCardDomForAllCardDom()
 
@@ -286,6 +347,24 @@
     await waitMilliSeconds(1)
     removeLargerPanel()
   }
+  function uniqueArrayByProperty(arr, prop) {
+    const seen = new Set()
+    return arr.filter((item) => {
+      for (let i = 0; i < excludeTag.length; i++) {
+        const tag = excludeTag[i]
+        if (item.tag.includes(tag) || item.title.includes(tag)) {
+          return false
+        }
+      }
+      const key = item[prop]
+      if (seen.has(key)) {
+        return false
+      } else {
+        seen.add(key)
+        return true
+      }
+    })
+  } // 可能是接口的问题,返回的多页数据有重复,需要去重
 
   // 初始化dom元素
   const needAddEventDom = {
@@ -502,7 +581,7 @@
       font-size:40px;
       display:flex;
       justify-content:center;
-      align-items:end;
+      align-items:center;
       padding:10px;
       ">革命尚未成功,同志仍需努力</div>`,
     },
@@ -531,21 +610,37 @@
   }
 
   // 主要的净化操作,添加B站的学习视频到主内容区
-  let allCardDom = []
   let allClassifyDom = []
   // page和keyword数据会在sendRequest函数里用到,请求搜索内容
   let page = 1
   let keyword = 'vue'
+  let taskQueue = []
 
-  async function createCardDomForAllCardDom(doms = allCardDom) {
+  async function createCardDomForAllCardDom(doms = allCardData, needCreateCount = -1) {
+    clearTasks()
+    needCreateCount = needCreateCount === -1 ? doms.length : needCreateCount
     deleteAllChild()
-    allCardDom = uniqueArrayByProperty(allCardDom, 'id')
-    for (let i = 0; i < doms.length; i += 30) {
-      const batch = doms.slice(i, i + 30)
-      createAllCard(batch)
-      await waitMilliSeconds(10)
+    removeLargerPanel()
+    await waitMilliSeconds(1)
+
+    for (let i = 0; i < doms.length; i += 20) {
+      const batch = doms.slice(i, i + 20)
+      let id = null
+      // 任务
+      const taskPromise = new Promise((resolve) => {
+        id = setTimeout(() => {
+          createAllCard(batch)
+          resolve()
+        }, 30)
+
+        // 将 timerId 添加到 taskPromise 中，以便后续取消任务
+        // this.timerId = timerId
+      })
+      taskPromise.timerId = id
+      // 添加到任务队列,方便统一取消
+      taskQueue.push(taskPromise)
     }
-    // createAllCard()
+
     function deleteAllChild() {
       for (let key in needPushCustomChildrenDom) {
         const element = needPushCustomChildrenDom[key]
@@ -556,36 +651,24 @@
       }
     } // 向主内容区添加学习视频前要清除先所有的元素
 
-    function uniqueArrayByProperty(arr, prop) {
-      const seen = new Set()
-      return arr.filter((item) => {
-        const key = item[prop]
-        if (seen.has(key)) {
-          return false
-        } else {
-          seen.add(key)
-          return true
-        }
-      })
-    } // 可能是接口的问题,返回的多页数据有重复,需要去重
     function createAllCard(batch) {
       for (let i = 0; i < batch.length; i++) {
         const item = batch[i]
         const card = createVideoCard(item)
         needPushCustomChildrenDom.is_version8.value.appendChild(card)
       }
-      // for (let i = 0; i < doms.length; i++) {
-      //   // 加载50个以后就可以移除遮挡层了
-      //   const item = doms[i]
-      //   const card = createVideoCard(item)
-      //   needPushCustomChildrenDom.is_version8.value.appendChild(card)
-      //   if (i > 100) {
-      //     removeLargerPanel()
-      //     document.body.scrollTop
-      //   }
-      // }
     }
-  } //根据数据创建真实dom
+  }
+
+  function clearTasks() {
+    // 取消所有旧任务
+    taskQueue.forEach((task) => {
+      clearTimeout(task.timerId)
+    })
+
+    // 清空任务队列
+    taskQueue = []
+  }
 
   function createVideoCard(item) {
     let { arcurl, pic, upic, mid, title, duration, play, danmaku, author, pubdate } = item
@@ -865,7 +948,7 @@
           continue
         }
 
-        allCardDom.push(item)
+        allCardData.push(item)
       }
     }
   }
@@ -952,26 +1035,19 @@
     classifies.forEach((classify) => {
       const classifyBtn = document.createElement('div')
       classifyBtn.classList.add('bili_fuck_classify_btn')
+      if (classify.value === 'all') {
+        // 首页分类按钮默认选中
+        classifyBtn.classList.add('active')
+      }
+      // 绑定点击事件,改变分类
       classifyBtn.addEventListener('click', () => {
+        changeActiveClassifyBtn(classifyBtn)
         if (classify.value === 'all') {
-          createCardDomForAllCardDom(allCardDom)
+          createCardDomForAllCardDom(allCardData)
         } else {
-          allClassifyDom = allCardDom.filter((item) => {
-            let had
-            if (Array.isArray(classify.value)) {
-              for (let i = 0; i < classify.value.length; i++) {
-                const value = classify.value[i]
-                had = item.title.includes(value) || item.tag.includes(value)
-                if (had) {
-                  return had
-                }
-              }
-            } else {
-              had = item.title.includes(classify.value) || item.tag.includes(classify)
-            }
-            return had
-          })
-          createCardDomForAllCardDom(allClassifyDom)
+          // 过滤出符合分类的元素
+          const dom = filterCardDomByClassify(classify)
+          createCardDomForAllCardDom(dom)
         }
       })
       classifyBtn.innerHTML = `
@@ -979,11 +1055,47 @@
         ${classify.text}
         </span>
       `
-
       classifyWrap.appendChild(classifyBtn)
     })
 
     bili_feed4_layout.insertBefore(classifyWrap, bili_feed4_layout.firstChild)
+    function filterCardDomByClassify(classify) {
+      let result = []
+      result = allCardData.filter((item) => {
+        let had
+        if (Array.isArray(classify.value)) {
+          for (let i = 0; i < classify.value.length; i++) {
+            if (classify.exclude) {
+              // 如果有需要排除的tag,那么优先判断是不是要排除
+              for (let j = 0; j < classify.exclude.length; j++) {
+                const excludeValue = classify.exclude[j]
+                if (item.title.includes(excludeValue) || item.tag.includes(excludeValue)) {
+                  return false
+                }
+              }
+            }
+            // 排除完了再判断有没有符合的
+            const value = classify.value[i]
+            if (item.title.includes(value) || item.tag.includes(value)) {
+              return true
+            }
+          }
+        } else {
+          had = item.title.includes(classify.value) || item.tag.includes(classify)
+        }
+        return had
+      })
+      return result
+    }
+    function changeActiveClassifyBtn(dom) {
+      const allClassifyBtn = document.querySelectorAll('.bili_fuck_classify_btn')
+      allClassifyBtn.forEach((btn) => {
+        if (btn.classList.contains('active')) {
+          btn.classList.remove('active')
+        }
+      })
+      dom.classList.add('active')
+    }
   }
 
   // 一些基本的净化操作,删除多余的营销元素
