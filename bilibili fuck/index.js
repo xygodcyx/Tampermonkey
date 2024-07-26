@@ -63,6 +63,95 @@
   }
 
   let offset = 1
+  // 一开始就初始化自定义的css样式
+  const customCssStyle = {
+    nav_search_input: `
+      .bili-header .center-search-container .center-search__bar .nav-search-content .nav-search-input::placeholder {
+      color:transparent;
+      }
+    `,
+    // 原版b站为了做方便加载,直接把多余的隐藏了,也是牛逼
+    card: `
+    @media screen and (min-width: 1px) {
+      .recommended-container_floor-aside .container .feed-card:nth-of-type(n + 12) {
+        display: block !important;
+      }
+      .recommended-container_floor-aside .container>*:nth-of-type(6){
+       margin-top:40px !important;
+      }
+      .recommended-container_floor-aside .container>*:nth-of-type(7){
+       margin-top:40px !important;
+      }
+    }
+    `,
+    // header的logo
+    bili_header__logo: `
+    .bili-header .left-entry__title{
+      display:none;
+    }
+    .bili-header .left-entry .entry-title{
+      display:none;
+    }
+    `,
+    // 右下角的下载弹窗
+    desktop_download_tip: `
+      .desktop-download-tip[data-v-7b3c00b0]{
+         display:none !important;
+      }
+      html body #app .desktop-download-tip{
+         display:none !important;
+      }
+      .desktop-download-tip{
+         display:none !important;
+      }
+    `,
+    // header左边上下切换的小广告
+    loc_moveclip: `
+      .loc-entry.loc-moveclip{
+        display:none !important;
+      }
+    `,
+    // 额外创建的css样式
+    bili_fuck: `
+    .bili_fuck_classify_warp{
+      width: 100%;
+      height: 40px;
+      display: flex;
+      justify-content: start;
+      align-items: center;
+      gap: 10px;
+    }
+    .bili_fuck_classify_btn{
+      background: #00AEEC;
+      width: auto;
+      height: 30px;
+      line-height: 30px;
+      padding: 0 10px;
+      border-radius: 3px;
+    }
+    .bili_fuck_classify_btn:hover{
+      cursor:pointer;
+      background:#0088cc;
+    }
+    `,
+  }
+  function initCustomCssStyle() {
+    const styleDom = document.createElement('style')
+    document.head.appendChild(styleDom)
+    for (let key in customCssStyle) {
+      const style = customCssStyle[key]
+      styleDom.innerHTML += style
+      // addStyleSheet(style)
+    }
+    function addStyleSheet(rules) {
+      const regex = /([^{}]+\{[^{}]*\})|(@[^\s{][^{]*\{([^{}]*\{[^{}]*\})+[^{}]*\})/g
+      const _rules = rules.match(regex)
+      _rules?.forEach((rule) => {
+        styleDom.sheet?.insertRule(rule, styleDom.sheet.cssRules.length)
+      })
+    }
+  }
+  initCustomCssStyle()
   if (window.location.href.includes('www.bilibili.com/video')) {
     // 视频播放页和消息页
     hideVideoPageHeader()
@@ -113,7 +202,46 @@
     message_navbar.remove()
     container.style.marginTop = '10px'
   }
+  let classifies = [
+    {
+      text: '全部',
+      value: 'all',
+    },
+    {
+      text: 'vue',
+      value: ['vue', 'Vue', 'Vue2.0', 'Vue3.0'],
+    },
+
+    {
+      text: 'js',
+      value: ['js', 'JavaScript'],
+    },
+
+    {
+      text: 'node.js',
+      value: ['node', 'node.js', 'Nodejs', 'Node.js'],
+    },
+
+    {
+      text: 'css',
+      value: ['CSS', 'CSS3'],
+    },
+    {
+      text: '编译器',
+      value: '编译器',
+    },
+    {
+      text: '算法',
+      value: '算法',
+    },
+    {
+      text: '数据结构',
+      value: '数据结构',
+    },
+  ]
+
   async function init() {
+    createClassify()
     await waitMilliSeconds(1)
     initAllDom()
 
@@ -132,16 +260,18 @@
     // 填充数据的过程
     await waitMilliSeconds(2)
     await WantIWhatCreateCard(1, 'vue入门')
+    await WantIWhatCreateCard(1, 'javascript进阶')
+    await WantIWhatCreateCard(1, 'javascript源码')
+    await WantIWhatCreateCard(1, 'nodejs')
     await WantIWhatCreateCard(1, 'vue源码')
-    await WantIWhatCreateCard(1, 'javascript')
-    await WantIWhatCreateCard(2, 'css高级')
-    await WantIWhatCreateCard(2, 'css创意')
+    await WantIWhatCreateCard(1, 'css高级')
+    await WantIWhatCreateCard(1, 'css创意')
     await WantIWhatCreateCard(1, '编译器入门')
     await WantIWhatCreateCard(1, 'JavaScript游戏教程')
     await WantIWhatCreateCard(1, '算法入门')
     await WantIWhatCreateCard(1, '数据结构入门')
     localStorage.setItem('allCardDom', allCardDom)
-
+    console.log(allCardDom)
     // 根据数据创建dom
     createCardDomForAllCardDom()
 
@@ -155,8 +285,6 @@
 
     await waitMilliSeconds(1)
     removeLargerPanel()
-
-    initCustomCssStyle()
   }
 
   // 初始化dom元素
@@ -191,11 +319,11 @@
       value: null,
       status: 'normal',
       wantAddStyle: {
-        marginBottom: '60px',
+        marginBottom: '5px',
       },
     },
     feed_card1: {
-      // 因为去除了轮播图,所以第五个元素的样式会受到影响,所以需要调整
+      // 因为去除了轮播图,所以第六个元素的样式会受到影响,所以需要调整
       select: '.feed-card:nth-child(6)',
       value: null,
       status: 'normal',
@@ -204,7 +332,7 @@
       },
     },
     feed_card2: {
-      // 因为去除了轮播图,所以第五个元素的样式会受到影响,所以需要调整
+      // 因为去除了轮播图,所以第七个元素的样式会受到影响,所以需要调整
       select: '.feed-card:nth-child(7)',
       value: null,
       status: 'normal',
@@ -213,46 +341,7 @@
       },
     },
   }
-  const customCssStyle = {
-    nav_search_input: `
-      .bili-header .center-search-container .center-search__bar .nav-search-content .nav-search-input::placeholder {
-      color:transparent;
-      }
-    `,
-    // 原版b站为了做方便加载,直接把多余的隐藏了,也是牛逼
-    card: `
-    @media screen and (min-width: 1px) {
-      .recommended-container_floor-aside .container .feed-card:nth-of-type(n + 12) {
-        display: block !important;
-      }
-    }
-    `,
-    // header的logo
-    bili_header__logo: `
-    .bili-header .left-entry__title{
-      display:none;
-    }
-    .bili-header .left-entry .entry-title{
-      display:none;
-    }
-    `,
-  }
-  function initCustomCssStyle() {
-    const styleDom = document.createElement('style')
-    document.head.appendChild(styleDom)
-    for (let key in customCssStyle) {
-      const style = customCssStyle[key]
-      styleDom.innerHTML += style
-      // addStyleSheet(style)
-    }
-    function addStyleSheet(rules) {
-      const regex = /([^{}]+\{[^{}]*\})|(@[^\s{][^{]*\{([^{}]*\{[^{}]*\})+[^{}]*\})/g
-      const _rules = rules.match(regex)
-      _rules?.forEach((rule) => {
-        styleDom.sheet?.insertRule(rule, styleDom.sheet.cssRules.length)
-      })
-    }
-  }
+
   function initUpdateStyleDom() {
     return new Promise((resolve, reject) => {
       getDom(updateStyleDom)
@@ -443,14 +532,20 @@
 
   // 主要的净化操作,添加B站的学习视频到主内容区
   let allCardDom = []
+  let allClassifyDom = []
   // page和keyword数据会在sendRequest函数里用到,请求搜索内容
   let page = 1
   let keyword = 'vue'
 
-  function createCardDomForAllCardDom() {
+  async function createCardDomForAllCardDom(doms = allCardDom) {
     deleteAllChild()
     allCardDom = uniqueArrayByProperty(allCardDom, 'id')
-    createAllCard()
+    for (let i = 0; i < doms.length; i += 30) {
+      const batch = doms.slice(i, i + 30)
+      createAllCard(batch)
+      await waitMilliSeconds(10)
+    }
+    // createAllCard()
     function deleteAllChild() {
       for (let key in needPushCustomChildrenDom) {
         const element = needPushCustomChildrenDom[key]
@@ -473,17 +568,22 @@
         }
       })
     } // 可能是接口的问题,返回的多页数据有重复,需要去重
-    function createAllCard() {
-      for (let i = 0; i < allCardDom.length; i++) {
-        // 加载50个以后就可以移除遮挡层了
-        const item = allCardDom[i]
+    function createAllCard(batch) {
+      for (let i = 0; i < batch.length; i++) {
+        const item = batch[i]
         const card = createVideoCard(item)
         needPushCustomChildrenDom.is_version8.value.appendChild(card)
-        if (i > 50) {
-          removeLargerPanel()
-          document.body.scrollTop
-        }
       }
+      // for (let i = 0; i < doms.length; i++) {
+      //   // 加载50个以后就可以移除遮挡层了
+      //   const item = doms[i]
+      //   const card = createVideoCard(item)
+      //   needPushCustomChildrenDom.is_version8.value.appendChild(card)
+      //   if (i > 100) {
+      //     removeLargerPanel()
+      //     document.body.scrollTop
+      //   }
+      // }
     }
   } //根据数据创建真实dom
 
@@ -745,7 +845,7 @@
   } //生成数据
 
   async function actualPushCustomChildren() {
-    const response = await sendRequest()
+    const response = await sendGetCardDataRequest()
     if (!response.data.result) {
       return
     }
@@ -770,7 +870,7 @@
     }
   }
 
-  function sendRequest() {
+  function sendGetCardDataRequest() {
     // 一个耗时操作，需要设置缓存
     return new Promise(async (resolve, reject) => {
       const params = {}
@@ -796,7 +896,7 @@
       }
       // w_rid是根据传入的参数和时间戳动态生成的
       // w_rid=52c5174af1034c1f5f6da1af639e4024&wts=${new Date().getTime()}
-      let data = localStorage.getItem(`bilifuck_${keyword}`, null)
+      let data = localStorage.getItem(`bilifuck_${keyword}${page}`, null)
       // let needGetNewCardData = isNeedReGetData()
 
       if (data) {
@@ -825,7 +925,7 @@
         responseType: 'json',
       })
       data = JSON.parse(response.responseText)
-      localStorage.setItem(`bilifuck_${keyword}`, response.responseText)
+      localStorage.setItem(`bilifuck_${keyword}${page}`, response.responseText)
       resolve(data)
     })
   }
@@ -842,6 +942,48 @@
       }
     }
     return result
+  }
+
+  function createClassify() {
+    // 主内容区最顶层的父元素
+    const bili_feed4_layout = document.querySelector('.bili-feed4-layout')
+    const classifyWrap = document.createElement('div')
+    classifyWrap.classList.add('bili_fuck_classify_warp')
+    classifies.forEach((classify) => {
+      const classifyBtn = document.createElement('div')
+      classifyBtn.classList.add('bili_fuck_classify_btn')
+      classifyBtn.addEventListener('click', () => {
+        if (classify.value === 'all') {
+          createCardDomForAllCardDom(allCardDom)
+        } else {
+          allClassifyDom = allCardDom.filter((item) => {
+            let had
+            if (Array.isArray(classify.value)) {
+              for (let i = 0; i < classify.value.length; i++) {
+                const value = classify.value[i]
+                had = item.title.includes(value) || item.tag.includes(value)
+                if (had) {
+                  return had
+                }
+              }
+            } else {
+              had = item.title.includes(classify.value) || item.tag.includes(classify)
+            }
+            return had
+          })
+          createCardDomForAllCardDom(allClassifyDom)
+        }
+      })
+      classifyBtn.innerHTML = `
+        <span>
+        ${classify.text}
+        </span>
+      `
+
+      classifyWrap.appendChild(classifyBtn)
+    })
+
+    bili_feed4_layout.insertBefore(classifyWrap, bili_feed4_layout.firstChild)
   }
 
   // 一些基本的净化操作,删除多余的营销元素
