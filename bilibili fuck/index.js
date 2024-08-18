@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         bilibili-fuck
 // @namespace    http://tampermonkey.net/
-// @version      1.0.0
-// @description  去你的bilibili推荐!,我要学习!!!
+// @version      1.0.1
+// @description  去你的bilibili推荐!我要学习!!!
 // @match        https://www.bilibili.com/
+// @match        www.bilibili.com/?spm_id_from=*
 // @match        https://search.bilibili.com/*
 // @match        https://www.bilibili.com/video/*
 // @match        https://message.bilibili.com/*
@@ -152,6 +153,24 @@
       background:#0088cc;
     }
     `,
+    // 弹幕,无论是学习还是观影,看弹幕都会降低体验并且会潜移默化的降低注意力
+    // bpx_player_row_dm_wrap: `
+    // .bpx-player-row-dm-wrap{
+    //   display:none !important;
+    // }
+    // .bpx-player-cmd-dm-wrap{
+    //   display:none !important;
+    // }
+    // `,
+    // 播放页的播放列表宽高
+    video_sections_content_list: `
+    #mirror-vdcon > div.right-container.is-in-large-ab > div > div:nth-child(8) > div > div.video-sections-content-list{
+      max-height: 560px !important;
+    }
+    #mirror-vdcon div.video-episode-card__info-title{
+      width: 370px !important;
+    }
+    `,
   }
   function initCustomCssStyle() {
     const styleDom = document.createElement('style')
@@ -177,7 +196,8 @@
     hideMessagePageHeader()
   } else if (
     window.location.href === 'https://www.bilibili.com/' ||
-    window.location.href === 'https://www.bilibili.com/index.html'
+    window.location.href === 'https://www.bilibili.com/index.html ' ||
+    window.location.href.includes('www.bilibili.com/?spm_id_from')
   ) {
     // bilibili的主页
     // 最好还是一开始就显示遮挡层
@@ -195,11 +215,22 @@
       replaceNavDom()
     } else if (
       window.location.href === 'https://www.bilibili.com/' ||
-      window.location.href === 'https://www.bilibili.com/index.html'
+      window.location.href === 'https://www.bilibili.com/index.html' ||
+      window.location.href.includes('www.bilibili.com/?spm_id_from')
     ) {
       // bilibili的主页
       offset = 1
       init()
+    } else if (window.location.href.includes('www.bilibili.com/video')) {
+      // 视频播放页
+      await initUpdateStyleDom()
+      updateStyle()
+      setInterval(() => {
+        const list = document.querySelector(
+          '#mirror-vdcon > div.right-container.is-in-large-ab > div > div:nth-child(8) > div > div.video-sections-content-list'
+        )
+        list.style.height = '560px'
+      }, 1000)
     }
   }
   function hideVideoPageHeader() {
@@ -305,6 +336,10 @@
       text: '哲学•道家•修仙',
       value: ['哲学', '人生意义', '道家', '修仙'],
     },
+    {
+      text: 'Udemy',
+      value: ['Udemy', 'udemy', 'Udemy课程', 'Udemy教程'],
+    },
   ]
   let allCardData = []
 
@@ -349,6 +384,9 @@
     await WantIWhatCreateCard(1, '哲学')
     await WantIWhatCreateCard(1, '道家')
     await WantIWhatCreateCard(1, '修仙')
+    await WantIWhatCreateCard(1, 'udemy')
+    await WantIWhatCreateCard(2, 'udemy')
+    await WantIWhatCreateCard(3, 'udemy')
     allCardData = uniqueArrayByProperty(allCardData, 'id')
     localStorage.setItem('allCardDom', allCardData)
     console.log(allCardData)
@@ -410,6 +448,7 @@
     })
   }
 
+  // 直接内联
   const updateStyleDom = {
     large_header: {
       select: '.large-header',
@@ -435,6 +474,16 @@
       status: 'normal',
       wantAddStyle: {
         marginTop: '40px',
+      },
+    },
+    // 播放页的播放列表加高
+    video_sections_content_list: {
+      select:
+        '#mirror-vdcon > div.right-container.is-in-large-ab > div > div:nth-child(8) > div > div.video-sections-content-list',
+      value: null,
+      status: 'normal',
+      wantAddStyle: {
+        height: '560px',
       },
     },
   }
@@ -647,10 +696,13 @@
       let id = null
       // 任务
       const taskPromise = new Promise((resolve) => {
-        id = setTimeout(() => {
-          createAllCard(batch)
-          resolve()
-        }, 30)
+        id = setTimeout(
+          () => {
+            createAllCard(batch)
+            resolve()
+          },
+          i < 50 ? i : 50
+        )
 
         // 将 timerId 添加到 taskPromise 中，以便后续取消任务
         // this.timerId = timerId
